@@ -3,10 +3,12 @@
 
 set(HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/inc/__msvc_all_public_headers.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/inc/__msvc_system_error_abi.hpp
     ${CMAKE_CURRENT_LIST_DIR}/inc/algorithm
     ${CMAKE_CURRENT_LIST_DIR}/inc/any
     ${CMAKE_CURRENT_LIST_DIR}/inc/array
     ${CMAKE_CURRENT_LIST_DIR}/inc/atomic
+    ${CMAKE_CURRENT_LIST_DIR}/inc/bit
     ${CMAKE_CURRENT_LIST_DIR}/inc/bitset
     ${CMAKE_CURRENT_LIST_DIR}/inc/cassert
     ${CMAKE_CURRENT_LIST_DIR}/inc/ccomplex
@@ -135,7 +137,6 @@ set(HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/inc/experimental/unordered_map
     ${CMAKE_CURRENT_LIST_DIR}/inc/experimental/unordered_set
     ${CMAKE_CURRENT_LIST_DIR}/inc/experimental/vector
-    ${CMAKE_CURRENT_LIST_DIR}/inc/experimental/xutility
     ${CMAKE_CURRENT_LIST_DIR}/inc/filesystem
     ${CMAKE_CURRENT_LIST_DIR}/inc/forward_list
     ${CMAKE_CURRENT_LIST_DIR}/inc/fstream
@@ -159,6 +160,7 @@ set(HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/inc/memory_resource
     ${CMAKE_CURRENT_LIST_DIR}/inc/mutex
     ${CMAKE_CURRENT_LIST_DIR}/inc/new
+    ${CMAKE_CURRENT_LIST_DIR}/inc/numbers
     ${CMAKE_CURRENT_LIST_DIR}/inc/numeric
     ${CMAKE_CURRENT_LIST_DIR}/inc/optional
     ${CMAKE_CURRENT_LIST_DIR}/inc/ostream
@@ -170,6 +172,7 @@ set(HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/inc/scoped_allocator
     ${CMAKE_CURRENT_LIST_DIR}/inc/set
     ${CMAKE_CURRENT_LIST_DIR}/inc/shared_mutex
+    ${CMAKE_CURRENT_LIST_DIR}/inc/span
     ${CMAKE_CURRENT_LIST_DIR}/inc/sstream
     ${CMAKE_CURRENT_LIST_DIR}/inc/stack
     ${CMAKE_CURRENT_LIST_DIR}/inc/stdexcept
@@ -217,7 +220,6 @@ set(HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/inc/xsmf_control.h
     ${CMAKE_CURRENT_LIST_DIR}/inc/xstddef
     ${CMAKE_CURRENT_LIST_DIR}/inc/xstring
-    ${CMAKE_CURRENT_LIST_DIR}/inc/xtgmath.h
     ${CMAKE_CURRENT_LIST_DIR}/inc/xthreads.h
     ${CMAKE_CURRENT_LIST_DIR}/inc/xtimec.h
     ${CMAKE_CURRENT_LIST_DIR}/inc/xtr1common
@@ -240,7 +242,9 @@ set(IMPLIB_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/nothrow.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/parallel_algorithms.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/sharedmutex.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/syserror_import_lib.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/vector_algorithms.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/xonce2.cpp
 )
 
 # The following files are linked in msvcp140[d][_clr].dll.
@@ -394,13 +398,18 @@ set(STATIC_SOURCES
     ${SOURCES_SATELLITE_CODECVT_IDS}
 )
 
+add_library(std_init_once_begin_initialize OBJECT IMPORTED)
+add_library(std_init_once_complete OBJECT IMPORTED)
+set_target_properties(std_init_once_begin_initialize PROPERTIES IMPORTED_OBJECTS "${CMAKE_CURRENT_LIST_DIR}/aliases/${VCLIBS_I386_OR_AMD64}/std_init_once_begin_initialize.obj")
+set_target_properties(std_init_once_complete PROPERTIES IMPORTED_OBJECTS "${CMAKE_CURRENT_LIST_DIR}/aliases/${VCLIBS_I386_OR_AMD64}/std_init_once_complete.obj")
+
 add_compile_definitions(_CRTBLD _VCRT_ALLOW_INTERNALS _HAS_OLD_IOSTREAMS_MEMBERS=1 _STL_CONCRT_SUPPORT)
 
 include_directories(BEFORE
     "${CMAKE_CURRENT_LIST_DIR}/inc"
     "${TOOLSET_ROOT_DIR}/crt/src/concrt"
     "${TOOLSET_ROOT_DIR}/crt/src/vcruntime"
-    )
+)
 
 function(add_stl_dlls D_SUFFIX THIS_CONFIG_DEFINITIONS THIS_CONFIG_COMPILE_OPTIONS GL_FLAG THIS_CONFIG_LINK_OPTIONS)
     # msvcp140.dll
@@ -443,7 +452,7 @@ function(add_stl_dlls D_SUFFIX THIS_CONFIG_DEFINITIONS THIS_CONFIG_COMPILE_OPTIO
     target_link_libraries(msvcp_2${D_SUFFIX}_objects PRIVATE Boost::headers Boost::disable_autolinking)
 
     add_library(msvcp_2${D_SUFFIX} SHARED)
-    target_link_libraries(msvcp_2${D_SUFFIX} PRIVATE msvcp_2${D_SUFFIX}_objects msvcp${D_SUFFIX}_implib_objects "msvcp${D_SUFFIX}" "${TOOLSET_LIB}/vcruntime${D_SUFFIX}.lib" "${TOOLSET_LIB}/msvcrt${D_SUFFIX}.lib" "ucrt${D_SUFFIX}.lib")
+    target_link_libraries(msvcp_2${D_SUFFIX} PRIVATE msvcp_2${D_SUFFIX}_objects msvcp${D_SUFFIX}_implib_objects std_init_once_begin_initialize std_init_once_complete "msvcp${D_SUFFIX}" "${TOOLSET_LIB}/vcruntime${D_SUFFIX}.lib" "${TOOLSET_LIB}/msvcrt${D_SUFFIX}.lib" "ucrt${D_SUFFIX}.lib")
     set_target_properties(msvcp_2${D_SUFFIX} PROPERTIES ARCHIVE_OUTPUT_NAME "msvcp140_2${D_SUFFIX}${VCLIBS_SUFFIX}")
     set_target_properties(msvcp_2${D_SUFFIX} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
     set_target_properties(msvcp_2${D_SUFFIX} PROPERTIES OUTPUT_NAME "msvcp140_2${D_SUFFIX}${VCLIBS_SUFFIX}")
@@ -463,7 +472,7 @@ function(add_stl_dlls D_SUFFIX THIS_CONFIG_DEFINITIONS THIS_CONFIG_COMPILE_OPTIO
 
     # import library
     add_library(msvcp${D_SUFFIX}_implib STATIC ${HEADERS})
-    target_link_libraries(msvcp${D_SUFFIX}_implib msvcp${D_SUFFIX}_implib_objects)
+    target_link_libraries(msvcp${D_SUFFIX}_implib msvcp${D_SUFFIX}_implib_objects std_init_once_begin_initialize std_init_once_complete)
     add_dependencies(msvcp${D_SUFFIX}_implib msvcp${D_SUFFIX} msvcp_1${D_SUFFIX} msvcp_2${D_SUFFIX} msvcp${D_SUFFIX}_codecvt_ids)
     set_target_properties(msvcp${D_SUFFIX}_implib PROPERTIES STATIC_LIBRARY_OPTIONS "/NOLOGO;/NODEFAULTLIB;/IGNORE:4006;$<TARGET_LINKER_FILE:msvcp${D_SUFFIX}>;$<TARGET_LINKER_FILE:msvcp_1${D_SUFFIX}>;$<TARGET_LINKER_FILE:msvcp_2${D_SUFFIX}>;$<TARGET_LINKER_FILE:msvcp${D_SUFFIX}_codecvt_ids>")
     set_target_properties(msvcp${D_SUFFIX}_implib PROPERTIES ARCHIVE_OUTPUT_NAME "msvcprt${D_SUFFIX}")
@@ -480,7 +489,7 @@ function(add_stl_statics FLAVOR_SUFFIX THIS_CONFIG_DEFINITIONS THIS_CONFIG_COMPI
     add_library(libcpmt${FLAVOR_SUFFIX} STATIC ${HEADERS} ${IMPLIB_SOURCES} ${SOURCES} ${STATIC_SOURCES})
     target_compile_definitions(libcpmt${FLAVOR_SUFFIX} PRIVATE "${THIS_CONFIG_DEFINITIONS}")
     target_compile_options(libcpmt${FLAVOR_SUFFIX} PRIVATE "${THIS_CONFIG_COMPILE_OPTIONS};/EHsc")
-    target_link_libraries(libcpmt${FLAVOR_SUFFIX} PRIVATE Boost::headers Boost::disable_autolinking libcpmt${FLAVOR_SUFFIX}_eha)
+    target_link_libraries(libcpmt${FLAVOR_SUFFIX} PRIVATE Boost::headers Boost::disable_autolinking libcpmt${FLAVOR_SUFFIX}_eha std_init_once_begin_initialize std_init_once_complete)
 endfunction()
 
 add_stl_statics("" "_ITERATOR_DEBUG_LEVEL=0" "${VCLIBS_RELEASE_OPTIONS}")

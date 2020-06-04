@@ -8,7 +8,9 @@
 #define _OPTIONAL_
 #include <yvals.h>
 #if _STL_COMPILER_PREPROCESSOR
-#if _HAS_CXX17
+#if !_HAS_CXX17
+#pragma message("The contents of <optional> are available only with C++17 or later.")
+#else // ^^^ !_HAS_CXX17 / _HAS_CXX17 vvv
 #include <exception>
 #include <initializer_list>
 #include <type_traits>
@@ -41,7 +43,7 @@ public:
 
 #if !_HAS_EXCEPTIONS
 protected:
-    virtual void _Doraise() const { // perform class-specific exception handling
+    virtual void _Doraise() const override { // perform class-specific exception handling
         _RAISE(*this);
     }
 #endif // !_HAS_EXCEPTIONS
@@ -392,10 +394,10 @@ public:
     }
 
     template <class _Ty2>
-    _NODISCARD constexpr _Ty value_or(_Ty2&& _Right) const& {
-        static_assert(is_copy_constructible_v<_Ty>,
-            "The const overload of optional<T>::value_or requires T to be copy constructible "
-            "(N4828 [optional.observe]/18).");
+    _NODISCARD constexpr remove_cv_t<_Ty> value_or(_Ty2&& _Right) const& {
+        static_assert(is_convertible_v<const _Ty&, remove_cv_t<_Ty>>,
+            "The const overload of optional<T>::value_or requires const T& to be convertible to remove_cv_t<T> "
+            "([optional.observe]/18 as modified by LWG-XXXX).");
         static_assert(is_convertible_v<_Ty2, _Ty>,
             "optional<T>::value_or(U) requires U to be convertible to T (N4828 [optional.observe]/18).");
 
@@ -403,13 +405,13 @@ public:
             return this->_Value;
         }
 
-        return static_cast<_Ty>(_STD forward<_Ty2>(_Right));
+        return static_cast<remove_cv_t<_Ty>>(_STD forward<_Ty2>(_Right));
     }
     template <class _Ty2>
-    _NODISCARD constexpr _Ty value_or(_Ty2&& _Right) && {
-        static_assert(is_move_constructible_v<_Ty>,
-            "The rvalue overload of optional<T>::value_or requires T to be move constructible "
-            "(N4828 [optional.observe]/20).");
+    _NODISCARD constexpr remove_cv_t<_Ty> value_or(_Ty2&& _Right) && {
+        static_assert(is_convertible_v<_Ty, remove_cv_t<_Ty>>,
+            "The rvalue overload of optional<T>::value_or requires T to be convertible to remove_cv_t<T> "
+            "([optional.observe]/20 as modified by LWG-XXXX).");
         static_assert(is_convertible_v<_Ty2, _Ty>,
             "optional<T>::value_or(U) requires U to be convertible to T (N4828 [optional.observe]/20).");
 
@@ -417,7 +419,7 @@ public:
             return _STD move(this->_Value);
         }
 
-        return static_cast<_Ty>(_STD forward<_Ty2>(_Right));
+        return static_cast<remove_cv_t<_Ty>>(_STD forward<_Ty2>(_Right));
     }
 
     // modifiers [optional.object.mod]
@@ -425,7 +427,7 @@ public:
 };
 
 template <class _Ty>
-optional(_Ty)->optional<_Ty>;
+optional(_Ty) -> optional<_Ty>;
 
 // RELATIONAL OPERATORS [optional.relops]
 template <class _Ty1, class _Ty2>
@@ -637,8 +639,6 @@ _STD_END
 _STL_RESTORE_CLANG_WARNINGS
 #pragma warning(pop)
 #pragma pack(pop)
-#else // ^^^ _HAS_CXX17 / !_HAS_CXX17 vvv
-#pragma message("class template optional is only available with C++17 or later.")
 #endif // _HAS_CXX17
 #endif // _STL_COMPILER_PREPROCESSOR
 #endif // _OPTIONAL_

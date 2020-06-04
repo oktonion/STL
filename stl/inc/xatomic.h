@@ -19,6 +19,9 @@ _STL_DISABLE_CLANG_WARNINGS
 #pragma push_macro("new")
 #undef new
 
+#define _CONCATX(x, y) x##y
+#define _CONCAT(x, y)  _CONCATX(x, y)
+
 // Interlocked intrinsic mapping for _nf/_acq/_rel
 #if defined(_M_CEE_PURE) || defined(_M_IX86) || defined(_M_X64)
 #define _INTRIN_RELAXED(x) x
@@ -55,6 +58,31 @@ _STL_DISABLE_CLANG_WARNINGS
 
 _STD_BEGIN
 
+#if _HAS_CXX20
+// ENUM CLASS memory_order
+enum class memory_order : int {
+    relaxed,
+    consume,
+    acquire,
+    release,
+    acq_rel,
+    seq_cst,
+
+    // LWG-3268
+    memory_order_relaxed = relaxed,
+    memory_order_consume = consume,
+    memory_order_acquire = acquire,
+    memory_order_release = release,
+    memory_order_acq_rel = acq_rel,
+    memory_order_seq_cst = seq_cst
+};
+inline constexpr memory_order memory_order_relaxed = memory_order::relaxed;
+inline constexpr memory_order memory_order_consume = memory_order::consume;
+inline constexpr memory_order memory_order_acquire = memory_order::acquire;
+inline constexpr memory_order memory_order_release = memory_order::release;
+inline constexpr memory_order memory_order_acq_rel = memory_order::acq_rel;
+inline constexpr memory_order memory_order_seq_cst = memory_order::seq_cst;
+#else // _HAS_CXX20
 // ENUM memory_order
 enum memory_order {
     memory_order_relaxed,
@@ -64,6 +92,7 @@ enum memory_order {
     memory_order_acq_rel,
     memory_order_seq_cst
 };
+#endif // _HAS_CXX20
 
 using _Atomic_counter_t = unsigned long;
 
@@ -74,6 +103,27 @@ _NODISCARD volatile _Integral* _Atomic_address_as(_Ty& _Source) noexcept {
     static_assert(is_integral_v<_Integral>, "Tried to reinterpret memory as non-integral");
     return &reinterpret_cast<volatile _Integral&>(_Source);
 }
+
+// FUNCTION TEMPLATE _Atomic_load_ll_relaxed
+#if (defined(_M_IX86) || defined(_M_X64) || defined(_M_ARM) || defined(_M_ARM64)) && !defined(_M_CEE_PURE)
+_NODISCARD inline long long _Atomic_load_ll_relaxed(volatile long long* _Mem) noexcept {
+    // Copy from _Atomic_storage<_Ty, 8>::load
+#if defined(_M_IX86) || defined(_M_ARM64)
+    return __iso_volatile_load64(_Mem);
+#elif defined(_M_X64)
+    return *_Mem;
+#else // _M_ARM
+    return __ldrexd(_Mem);
+#endif // hardware
+}
+
+// FUNCTION TEMPLATE _Atomic_compare_exchange_strong_ll_seq_cst
+inline bool _Atomic_compare_exchange_strong_ll_seq_cst(
+    volatile long long* _Mem, long long _Value, long long _Comparand) noexcept {
+    // Copy from _Atomic_storage<_Ty, 8>::store
+    return _InterlockedCompareExchange64(_Mem, _Value, _Comparand) == _Comparand;
+}
+#endif // (defined(_M_IX86) || defined(_M_X64) || defined(_M_ARM) || defined(_M_ARM64)) && !defined(_M_CEE_PURE)
 
 _STD_END
 

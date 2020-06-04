@@ -9,6 +9,7 @@
 #include <yvals_core.h>
 #if _STL_COMPILER_PREPROCESSOR
 #include <ctime>
+#include <iterator>
 #include <xlocnum>
 
 #pragma pack(push, _CRT_PACKING)
@@ -20,7 +21,7 @@ _STL_DISABLE_CLANG_WARNINGS
 
 _STD_BEGIN
 // STRUCT time_base
-struct _CRTIMP2_PURE_IMPORT time_base : public locale::facet { // base class for time_get
+struct _CRTIMP2_PURE_IMPORT time_base : locale::facet { // base class for time_get
     enum dateorder { // constants for different orders of date components
         no_order,
         dmy,
@@ -621,12 +622,10 @@ public:
     static_assert(!_ENFORCE_FACET_SPECIALIZATIONS || _Is_any_of_v<_Elem, char, wchar_t>, _FACET_SPECIALIZATION_MESSAGE);
 
     explicit time_get_byname(const char* _Locname, size_t _Refs = 0)
-        : time_get<_Elem, _InIt>(_Locname, _Refs) { // construct for named locale
-    }
+        : time_get<_Elem, _InIt>(_Locname, _Refs) {} // construct for named locale
 
     explicit time_get_byname(const string& _Str, size_t _Refs = 0)
-        : time_get<_Elem, _InIt>(_Locinfo(_Str.c_str()), _Refs) { // construct for named locale
-    }
+        : time_get<_Elem, _InIt>(_Locinfo(_Str.c_str()), _Refs) {} // construct for named locale
 
 protected:
     virtual __CLR_OR_THIS_CALL ~time_get_byname() noexcept {}
@@ -1009,12 +1008,10 @@ public:
     static_assert(!_ENFORCE_FACET_SPECIALIZATIONS || _Is_any_of_v<_Elem, char, wchar_t>, _FACET_SPECIALIZATION_MESSAGE);
 
     explicit time_put_byname(const char* _Locname, size_t _Refs = 0)
-        : time_put<_Elem, _OutIt>(_Locname, _Refs) { // construct for named locale
-    }
+        : time_put<_Elem, _OutIt>(_Locname, _Refs) {} // construct for named locale
 
     explicit time_put_byname(const string& _Str, size_t _Refs = 0)
-        : time_put<_Elem, _OutIt>(_Str.c_str(), _Refs) { // construct for named locale
-    }
+        : time_put<_Elem, _OutIt>(_Str.c_str(), _Refs) {} // construct for named locale
 
 protected:
     virtual __CLR_OR_THIS_CALL ~time_put_byname() noexcept {}
